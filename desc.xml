@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<plugin name="wklogincas" version="0.1" active="1">
+  <author>Florian Schmitt <mrflos@lilo.org></author>
+  <label>Identification centralisée par serveur CAS</label>
+  <desc>Remplace l'identification de YesWiki par une identification centralisée par serveur CAS</desc>
+</plugin>
