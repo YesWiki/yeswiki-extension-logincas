@@ -1,7 +1,19 @@
 <?php
+/**
+ * Action for login
+ * 
+ * @category YesWiki
+ * @package  Login-cas
+ * @author   Florian Schmitt <mrflos@lilo.org>
+ * @license  https://www.gnu.org/licenses/agpl-3.0.en.html AGPL 3.0
+ * @link     https://yeswiki.net
+ */
+
 if (!defined('WIKINI_VERSION')) {
     die('acc&egrave;s direct interdit');
 }
+
+require_once 'tools/login-cas/libs/login-cas.lib.php';
 
 // Verification si le fichier de conf est bien renseigné
 if (!isset($this->config['cas_host']) or empty($this->config['cas_host'])) {
@@ -16,26 +28,6 @@ $signupurl = 'http'.((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' |
 
 // url du profil
 $profileurl = $this->GetParameter('profileurl');
-
-// sauvegarde de l'url d'ou on vient
-$incomingurl = $this->GetParameter('incomingurl');
-if (empty($incomingurl)) {
-    $incomingurl = 'http'.((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 's' : '') . '://' . "{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
-}
-
-$userpage = $this->GetParameter("userpage");
-// si pas d'url de page de sortie renseignée, on retourne sur la page courante
-if (empty($userpage)) {
-    $userpage = $incomingurl;
-    // si l'url de sortie contient le passage de parametres de déconnexion, on l'efface
-    if (isset($_REQUEST["action"]) && $_REQUEST["action"] == "logout") {
-        $userpage = str_replace('&action=logout', '', $userpage);
-    }
-} else {
-    if ($this->IsWikiName($userpage)) {
-        $userpage = $this->href('', $userpage);
-    }
-}
 
 // classe css pour l'action
 $class = $this->GetParameter("class");
@@ -61,112 +53,83 @@ if (!isset($_REQUEST["action"])) {
     $_REQUEST["action"] = '';
 }
 
+// sauvegarde de l'url d'ou on vient
+$incomingurl = $this->GetParameter('incomingurl');
+if (empty($incomingurl)) {
+    $incomingurl = 'http'.((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? 's' : '') . '://' . "{$_SERVER['HTTP_HOST']}{$_SERVER['REQUEST_URI']}";
+}
 
-// Generating the URLS for the local cas example services for proxy testing
-if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') {
-    $curbase = 'https://' . $_SERVER['SERVER_NAME'];
+$userpage = $this->GetParameter("userpage");
+// si pas d'url de page de sortie renseignée, on retourne sur la page courante
+if (empty($userpage)) {
+    $userpage = $incomingurl;
+    // si l'url de sortie contient le passage de parametres de déconnexion, on l'efface
+    if (isset($_REQUEST["action"]) && $_REQUEST["action"] == "logout") {
+        $userpage = str_replace('&action=logout', '', $userpage);
+    }
 } else {
-    $curbase = 'http://' . $_SERVER['SERVER_NAME'];
+    if ($this->IsWikiName($userpage)) {
+        $userpage = $this->href('', $userpage);
+    }
 }
-if ($_SERVER['SERVER_PORT'] != 80 && $_SERVER['SERVER_PORT'] != 443) {
-    $curbase .= ':' . $_SERVER['SERVER_PORT'];
-}
-
-$curdir = dirname($_SERVER['REQUEST_URI']) . "/";
-
-$pgtBase = preg_quote(preg_replace('/^http:/', 'https:', $curbase . $curdir), '/');
-$pgtUrlRegexp = '/^' . $pgtBase . '.*$/';
-
-$cas_url = 'https://' . $this->config['cas_host'];
-if ($this->config['cas_port'] != '443') {
-    $cas_url = $cas_url . ':' . $this->config['cas_port'] ;
-}
-$cas_url = $cas_url . $this->config['cas_context'];
-
-
-// Load the CAS lib
-require_once 'tools/login-cas/libs/vendor/CAS/source/CAS.php';
-
-
-// Enable debugging
-//phpCAS::setDebug();
-// Enable verbose error messages. Disable in production!
-phpCAS::setVerbose(false);
-
-// Initialize phpCAS
-phpCAS::client(CAS_VERSION_2_0, $this->config['cas_host'], $this->config['cas_port'], $this->config['cas_context']);
-
-
-if (!empty($this->config['cas_server_ca_cert_path'])) {
-    // For production use set the CA certificate that is the issuer of the cert
-    // on the CAS server and uncomment the line below
-    phpCAS::setCasServerCACert($this->config['cas_server_ca_cert_path']);
-} else {
-    // For quick testing you can disable SSL validation of the CAS server.
-    // THIS SETTING IS NOT RECOMMENDED FOR PRODUCTION.
-    // VALIDATING THE CAS SERVER IS CRUCIAL TO THE SECURITY OF THE CAS PROTOCOL!
-    phpCAS::setNoCasServerValidation();
-}
-
-// set the language to french
-phpCAS::setLang(PHPCAS_LANG_FRENCH);
-
 
 // cas de la déconnexion
 if ($_REQUEST["action"] == "logout") {
     $this->LogoutUser();
-    phpCAS::logout(array('url' => $incomingurl));
-    exit;
+    $incomingurl = str_replace(array('wiki=', '&action=logout'), '', $incomingurl);
+    //TODO trouver comment se deconnecter que tu service phpCAS::logout(array('url' => $incomingurl));
+    $this->redirect($incomingurl);
 }
 
-$auth = phpCAS::isAuthenticated();
-
-if ($auth) {
-    $attr = phpCAS::getAttributes();
-    $email = isset($attr["mail"]) ? $attr["mail"] : '';
-    $nomwiki = isset($attr["name"]) ? $attr["name"] : '';
-    $user = $this->LoadUser($nomwiki);
-    if ($user) {
-        $this->SetUser($user, 1);
-    } else {
-        $this->Query(
-            "insert into ".$this->config["table_prefix"]."users set ".
-            "signuptime = now(), ".
-            "name = '".mysqli_real_escape_string($this->dblink, $nomwiki)."', ".
-            "email = '".mysqli_real_escape_string($this->dblink, $email)."', ".
-            "password = md5('".mysqli_real_escape_string($this->dblink, uniqid('cas_'))."')"
-        );
-
-        // log in
-        $this->SetUser($this->LoadUser($nomwiki));
+// demande de connexion
+if ($_REQUEST['action'] == 'connectCAS') {
+    // on vide les cookie pour la premiere connexion
+    if (!isset($_GET['ticket'])) {
+        setcookie("PHPSESSID", "", time()-3600, "/"); // delete session cookie
     }
-    $bazar = $this->config['cas_bazar_mapping'];
-    if (count($bazar)>0 and isset($bazar[0]['id']) and isset($bazar[0]['consent_question']) and count($bazar[0]['fields']) > 0) {
-        //echo $this->Header();
-        //echo $bazar[0]['consent_question'];
-        //echo $this->Footer();
-        //exit;
-    }
-} else {
-    if (isset($_GET['action']) && $_GET['action'] == 'connectCAS') {
-        try {
-            // force CAS authentication
-            phpCAS::forceAuthentication();
-        } catch (\Exception $e) {
-            echo 'Caught exception: ',  $e->getMessage(), "\n";
+    $attr = getCasUser($this);
+
+    if ($attr) {
+        $email = isset($attr["mail"]) ? $attr["mail"] : '';
+        $nomwiki = isset($attr["name"]) ? $attr["name"] : '';
+        $user = $this->LoadUser($nomwiki);
+        if ($user) {
+            $this->SetUser($user, 1);
+        } else {
+            $this->Query(
+                "insert into ".$this->config["table_prefix"]."users set ".
+                "signuptime = now(), ".
+                "name = '".mysqli_real_escape_string($this->dblink, $nomwiki)."', ".
+                "email = '".mysqli_real_escape_string($this->dblink, $email)."', ".
+                "password = md5('".mysqli_real_escape_string($this->dblink, uniqid('cas_'))."')"
+            );
+            // log in
+            $this->SetUser($this->LoadUser($nomwiki));
         }
+
+        // cas de l'option creation de fiche bazar a la connexion
+        $bazar = $this->config['cas_bazar_mapping'];
+        $entry = bazarEntryExists($this, $user['name']);
+        if (!$entry && checkConfigCasToBazar($bazar)) {
+            $this->redirect($this->href('createentry', 'BazaR', 'firsttime=1&attr='.rawurlencode(serialize($attr)), false));
+        } elseif ($entry && checkConfigCasToBazar($bazar, !isset($_GET['firsttime']))) {
+            //update if necessary
+        }
+    
+        $incomingurl = str_replace(array('wiki=','&action=connectCAS'), '', $incomingurl);
+        $this->redirect($incomingurl); 
     } else {
-        $this->redirect(str_replace('/?', '/?wiki=', $incomingurl).'&action=connectCAS');
+        echo '<div class="alert alert-danger">Erreur d\'authentification sur le serveur CAS</div>';
     }
 }
 
 // cas d'une personne connectée déjà
-if ($user = $this->GetUser()) {
+if ($user = $this->GetUser()) {    
     $connected = true;
     if ($this->LoadPage("PageMenuUser")) {
         $PageMenuUser.= $this->Format("{{include page=\"PageMenuUser\"}}");
     }
-
+    
     // si pas de pas d'url de profil renseignée, on utilise ParametresUtilisateur
     if (empty($profileurl)) {
         $profileurl = $this->href("", "ParametresUtilisateur", "");
@@ -180,6 +143,11 @@ if ($user = $this->GetUser()) {
 } else {
     // cas d'une personne non connectée
     $connected = false;
+    
+    // on rajoute le wiki= pour le serveur CAS
+    if (!strstr($incomingurl, '/?wiki=')) {
+        $incomingurl = str_replace('/?', '/?wiki=', $incomingurl);
+    }
 
     // si l'authentification passe mais la session n'est pas créée, on a un problème de cookie
     if ($_REQUEST['action'] == 'checklogged') {
@@ -191,10 +159,10 @@ if ($user = $this->GetUser()) {
 // on affiche le template
 //
 
-include_once('includes/squelettephp.class.php');
+require_once 'includes/squelettephp.class.php';
 
 // on cherche un template personnalise dans le repertoire themes/tools/bazar/templates
-$templatetoload = 'themes/tools/login-cas/templates/' . $template;
+$templatetoload = 'themes/tools/login-cas/presentation/templates/' . $template;
 
 if (!is_file($templatetoload)) {
     $templatetoload = 'tools/login-cas/presentation/templates/' . $template;
@@ -219,7 +187,5 @@ $squel->set(
         "error" => $error
     )
 );
-
 $output = (!empty($class)) ? '<div class="'.$class.'">'."\n".$squel->analyser()."\n".'</div>'."\n" : $squel->analyser();
-
 echo $output;
