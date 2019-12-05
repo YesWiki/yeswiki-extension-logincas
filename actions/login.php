@@ -1,7 +1,7 @@
 <?php
 /**
  * Action for login
- * 
+ *
  * @category YesWiki
  * @package  Login-cas
  * @author   Florian Schmitt <mrflos@lilo.org>
@@ -93,9 +93,7 @@ if ($_REQUEST['action'] == 'connectCAS') {
         $email = isset($attr["mail"]) ? $attr["mail"] : '';
         $nomwiki = isset($attr["name"]) ? $attr["name"] : '';
         $user = $this->LoadUser($nomwiki);
-        if ($user) {
-            $this->SetUser($user, 1);
-        } else {
+        if (!$user) {
             $this->Query(
                 "insert into ".$this->config["table_prefix"]."users set ".
                 "signuptime = now(), ".
@@ -104,8 +102,9 @@ if ($_REQUEST['action'] == 'connectCAS') {
                 "password = md5('".mysqli_real_escape_string($this->dblink, uniqid('cas_'))."')"
             );
             // log in
-            $this->SetUser($this->LoadUser($nomwiki));
+            $user = $this->LoadUser($nomwiki);
         }
+        $this->SetUser($user, 1);
 
         // cas de l'option creation de fiche bazar a la connexion
         $bazar = $this->config['cas_bazar_mapping'];
@@ -117,14 +116,14 @@ if ($_REQUEST['action'] == 'connectCAS') {
         }
     
         $incomingurl = str_replace(array('wiki=','&action=connectCAS'), '', $incomingurl);
-        $this->redirect($incomingurl); 
+        $this->redirect($incomingurl);
     } else {
         echo '<div class="alert alert-danger">Erreur d\'authentification sur le serveur CAS</div>';
     }
 }
 
 // cas d'une personne connectée déjà
-if ($user = $this->GetUser()) {    
+if ($user = $this->GetUser()) {
     $connected = true;
     if ($this->LoadPage("PageMenuUser")) {
         $PageMenuUser.= $this->Format("{{include page=\"PageMenuUser\"}}");
@@ -158,21 +157,10 @@ if ($user = $this->GetUser()) {
 //
 // on affiche le template
 //
-
 require_once 'includes/squelettephp.class.php';
 
-// on cherche un template personnalise dans le repertoire themes/tools/bazar/templates
-$templatetoload = 'themes/tools/login-cas/presentation/templates/' . $template;
-
-if (!is_file($templatetoload)) {
-    $templatetoload = 'tools/login-cas/presentation/templates/' . $template;
-    if (!is_file($templatetoload)) {
-        exit('<div class="alert alert-danger">template non trouvé : '.$template.'.</div>');
-    }
-}
-
-$squel = new SquelettePhp($templatetoload);
-$squel->set(
+$squel = new SquelettePhp($template, 'login-cas');
+$output = $squel->render(
     array(
         "connected" => $connected,
         "user" => ((isset($user["name"])) ? $user["name"] : ((isset($_POST["name"])) ? $_POST["name"] : '')),
@@ -187,5 +175,5 @@ $squel->set(
         "error" => $error
     )
 );
-$output = (!empty($class)) ? '<div class="'.$class.'">'."\n".$squel->analyser()."\n".'</div>'."\n" : $squel->analyser();
+$output = (!empty($class)) ? '<div class="'.$class.'">'."\n".$output."\n".'</div>'."\n" : $output;
 echo $output;
