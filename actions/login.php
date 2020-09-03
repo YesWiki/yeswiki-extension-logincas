@@ -17,7 +17,8 @@ require_once 'tools/login-cas/libs/login-cas.lib.php';
 
 // Verification si le fichier de conf est bien renseigné
 if (!isset($this->config['cas_host']) or empty($this->config['cas_host'])) {
-    echo '<div class="alert alert-danger">'._t('action {{login}} : valeur de l\'url de votre serveur CAS <code>cas_host</code> manquante dans wakka.config.php.<br />Veuillez le renseigner ou supprimer le dossier tools/login-cas pour annuler ce comportement. <a href="https://github.com/YesWiki/yeswiki-extension-login-cas/blob/master/README.md">Lire la documentation technique pour voir toutes les options de configuration</a>').'</div>';
+    echo '<div class="alert alert-danger">'._t('action {{login}} : valeur de l\'url de votre serveur CAS <code>cas_host</code> manquante dans wakka.config.php.<br />Veuillez le renseigner pour utiliser cette extension. <a href="https://github.com/YesWiki/yeswiki-extension-login-cas/blob/master/README.md">Lire la documentation technique pour voir toutes les options de configuration</a>').'</div>';
+    include_once 'tools/login/actions/login.php';
     return;
 }
 
@@ -99,6 +100,7 @@ if ($_REQUEST['action'] == 'connectCAS') {
                 "signuptime = now(), ".
                 "name = '".mysqli_real_escape_string($this->dblink, $nomwiki)."', ".
                 "email = '".mysqli_real_escape_string($this->dblink, $email)."', ".
+                "motto = '',".
                 "password = md5('".mysqli_real_escape_string($this->dblink, uniqid('cas_'))."')"
             );
             // log in
