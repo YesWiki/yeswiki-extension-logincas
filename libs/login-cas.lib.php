@@ -83,7 +83,7 @@ function checkConfigCasToBazar($bazar, $firsttime = true)
 function bazarEntryExists($wiki, $user)
 {
     include_once 'tools/bazar/libs/bazar.fonct.php';
-    $res = baz_requete_recherche_fiches('', '', $wiki->config['cas_bazar_mapping'][0]['id'], '', 1, $user);
+    $res = $GLOBALS['bazarFiche']->search(['formsIds' => [$wiki->config['cas_bazar_mapping'][0]['id']], 'user' => $user]);
     return isset($res[0]['tag']) ? $res[0]['tag'] : false;
 
 }
