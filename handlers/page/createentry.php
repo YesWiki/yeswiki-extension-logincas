@@ -14,7 +14,7 @@ if (!defined("WIKINI_VERSION")) {
     die("acc&egrave;s direct interdit");
 }
 
-global $bazarFiche;
+$ficheManager = $this->services->get('bazar.fiche.manager');
 
 require_once 'tools/login-cas/libs/login-cas.lib.php';
 ob_start();
@@ -28,7 +28,7 @@ if ($this->GetUser() && isset($_GET['attr']) && $auth) {
             if (count($fiche>0)) {
                 include_once 'tools/bazar/libs/bazar.fonct.php';
                 $fiche['antispam'] = 1;
-                $fiche = $bazarFiche->create($fiche['id_typeannonce'], $fiche);
+                $fiche = $ficheManager->create($fiche['id_typeannonce'], $fiche);
                 $this->redirect($this->href('', $fiche['id_fiche']));
             }
         } else {
