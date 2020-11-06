@@ -1,0 +1,7 @@
+parameters:
+  cas_host: ''                  # Full hostname of the CAS Server
+  cas_context: '/cas'           # Context of the CAS Server
+  cas_port: 443                 # Port of the CAS server. Normally for a https server it's 443
+  cas_server_ca_cert_path: ''   # Path to the ca chain that issued the cas server certificate
+  cas_bazar_mapping:
+    -
