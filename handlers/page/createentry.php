@@ -9,12 +9,13 @@
  * @link     https://yeswiki.net
  */
 
-// Vérification de sécurité
+use YesWiki\Bazar\Service\FicheManager;
+
 if (!defined("WIKINI_VERSION")) {
     die("acc&egrave;s direct interdit");
 }
 
-$ficheManager = $this->services->get('bazar.fiche.manager');
+$ficheManager = $this->services->get(FicheManager::class);
 
 require_once 'tools/login-cas/libs/login-cas.lib.php';
 ob_start();

@@ -9,6 +9,8 @@
  * @link     https://yeswiki.net
  */
 
+use YesWiki\Bazar\Service\FicheManager;
+
 /**
  * Attempt login to CAS and retrieve user attributes if success
  *
@@ -82,7 +84,7 @@ function checkConfigCasToBazar($bazar, $firsttime = true)
  */
 function bazarEntryExists($wiki, $user)
 {
-    $res = $wiki->services->get('bazar.fiche.manager')->search(['formsIds' => [$wiki->config['cas_bazar_mapping'][0]['id']], 'user' => $user]);
+    $res = $wiki->services->get(FicheManager::class)->search(['formsIds' => [$wiki->config['cas_bazar_mapping'][0]['id']], 'user' => $user]);
     return isset($res[0]['tag']) ? $res[0]['tag'] : false;
 }
 
