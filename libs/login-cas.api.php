@@ -46,20 +46,21 @@ function postParticipant($arg = '')
     header("Content-Type: application/json; charset=UTF-8");
 
     if (isset($arg[0]) && $arg[0] == 'subscribe') {
-        if (!empty($_POST['data']->mail)) {
-            $email = urldecode($_POST['data']->mail);
+        if (!empty($_POST['email'])) {
+            $email = urldecode($_POST['email']);
+            $name = urldecode($_POST['name']);
             $isParticipating = $wiki->loadUserByEmail($email) ? true : false;
             if (!$isParticipating) {
-                if (!empty($_POST['data']->mail) and !empty($_POST['data']->name)) {
+                if (!empty($email) and !empty($name)) {
                     $wiki->Query(
                         "insert into ".$wiki->config["table_prefix"]."users set ".
                         "signuptime = now(), ".
-                        "name = '".mysqli_real_escape_string($wiki->dblink, $_POST['data']->name)."', ".
-                        "email = '".mysqli_real_escape_string($wiki->dblink, $_POST['data']->mail)."', ".
+                        "name = '".mysqli_real_escape_string($wiki->dblink, $name)."', ".
+                        "email = '".mysqli_real_escape_string($wiki->dblink, $mail)."', ".
                         "motto = '',".
                         "password = md5('".mysqli_real_escape_string($wiki->dblink, uniqid('cas_'))."')"
                     );
-                    $user = $wiki->LoadUser($_POST['data']->name);
+                    $user = $wiki->LoadUser($name);
                     return json_encode(array(
                         "name" => $user['name'],
                         "email" => $user['email'],
@@ -74,11 +75,28 @@ function postParticipant($arg = '')
             }
         } else {
             http_response_code(403);
-            return json_encode(array("message" => "No 'data' found in this post request ."));
+            return json_encode(array("message" => "No 'email' found in this post request ."));
+        }
+    } elseif (isset($arg[0]) && $arg[0] == 'unsubscribe') { 
+        $email = urldecode($_POST['email']);
+        $name = urldecode($_POST['name']);
+        $isParticipating = $wiki->loadUserByEmail($email) ? true : false;
+        if ($isParticipating) {
+            $wiki->Query(
+                "DELETE FROM ".$wiki->config["table_prefix"]."users WHERE ".
+                "email = '".mysqli_real_escape_string($wiki->dblink, $email)."' ".
+                "AND name ='".mysqli_real_escape_string($wiki->dblink, $name)."';"
+            );
+            return json_encode(array('message' => 'User '.$name.' ('.$email.') succesfully deleted.'));
+        } else {
+            http_response_code(200);
+            header("Access-Control-Allow-Origin: * ");
+            header("Content-Type: application/json; charset=UTF-8");
+            return json_encode(array("message" => "No user to delete with this email or name."));
         }
     } else {
         http_response_code(403);
-        return json_encode(array("message" => "Wrong route for POST, only 'subscribe'."));
+        return json_encode(array("message" => "Wrong route for POST, only 'subscribe' or 'unsubscribe'."));
     }
 }
 
@@ -93,11 +111,12 @@ function deleteParticipant($email = '')
                 "DELETE FROM ".$wiki->config["table_prefix"]."users WHERE ".
                 "email = '".mysqli_real_escape_string($wiki->dblink, $email)."';"
             );
+            return json_encode(array('message' => 'User '.$email.' succesfully deleted.'));
         } else {
             http_response_code(200);
             header("Access-Control-Allow-Origin: * ");
             header("Content-Type: application/json; charset=UTF-8");
-            return json_encode(array("message" => "No user to delete with this email."));
+            return json_encode(array("message" => "No user to delete with this email or name."));
         }
     }
 }
