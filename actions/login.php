@@ -3,7 +3,7 @@
  * Action for login
  *
  * @category YesWiki
- * @package  Login-cas
+ * @package  Logincas
  * @author   Florian Schmitt <mrflos@lilo.org>
  * @license  https://www.gnu.org/licenses/agpl-3.0.en.html AGPL 3.0
  * @link     https://yeswiki.net
@@ -13,11 +13,11 @@ if (!defined('WIKINI_VERSION')) {
     die('acc&egrave;s direct interdit');
 }
 
-require_once 'tools/login-cas/libs/login-cas.lib.php';
+require_once 'tools/logincas/libs/login-cas.lib.php';
 
 // Verification si le fichier de conf est bien renseigné
 if (!isset($this->config['cas_host']) or empty($this->config['cas_host'])) {
-    echo '<div class="alert alert-danger">'._t('action {{login}} : valeur de l\'url de votre serveur CAS <code>cas_host</code> manquante dans wakka.config.php.<br />Veuillez le renseigner pour utiliser cette extension. <a href="https://github.com/YesWiki/yeswiki-extension-login-cas/blob/master/README.md">Lire la documentation technique pour voir toutes les options de configuration</a>').'</div>';
+    echo '<div class="alert alert-danger">'._t('action {{login}} : valeur de l\'url de votre serveur CAS <code>cas_host</code> manquante dans wakka.config.php.<br />Veuillez le renseigner pour utiliser cette extension. <a href="https://github.com/YesWiki/yeswiki-extension-logincas/blob/master/README.md">Lire la documentation technique pour voir toutes les options de configuration</a>').'</div>';
     include_once 'tools/login/actions/login.php';
     return;
 }
@@ -42,7 +42,7 @@ $nobtn = $this->GetParameter("nobtn");
 
 // template par défaut
 $template = $this->GetParameter("template");
-if (empty($template) || !file_exists('tools/login-cas/presentation/templates/' . $template)) {
+if (empty($template) || !file_exists('tools/logincas/presentation/templates/' . $template)) {
     $template = "default.tpl.html";
 }
 
@@ -161,7 +161,7 @@ if ($user = $this->GetUser()) {
 //
 require_once 'includes/squelettephp.class.php';
 
-$squel = new SquelettePhp($template, 'login-cas');
+$squel = new SquelettePhp($template, 'logincas');
 $output = $squel->render(
     array(
         "connected" => $connected,
