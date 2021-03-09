@@ -1,9 +1,9 @@
 <?php
 /**
  * French translation
- * 
+ *
  * @category YesWiki
- * @package  Login-cas
+ * @package  Logincas
  * @author   Florian Schmitt <mrflos@lilo.org>
  * @license  https://www.gnu.org/licenses/agpl-3.0.en.html AGPL 3.0
  * @link     https://yeswiki.net

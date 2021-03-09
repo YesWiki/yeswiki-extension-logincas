@@ -1,9 +1,9 @@
 <?php
 /**
  * Library of CAS and wiki/bazar users functions
- * 
+ *
  * @category YesWiki
- * @package  Login-cas
+ * @package  Loginccas
  * @author   Florian Schmitt <mrflos@lilo.org>
  * @license  https://www.gnu.org/licenses/agpl-3.0.en.html AGPL 3.0
  * @link     https://yeswiki.net
@@ -13,13 +13,13 @@
  * Attempt login to CAS and retrieve user attributes if success
  *
  * @param object $wiki Main YesWiki object
- * 
+ *
  * @return mixed array of user's attribute if logged in, false otherwise
  */
 function getCasUser($wiki)
-{    
+{
     // Load the CAS lib
-    include_once 'tools/login-cas/libs/vendor/CAS/source/CAS.php';
+    include_once 'tools/logincas/libs/vendor/CAS/source/CAS.php';
     
     if (isset($_GET['debug'])) {
         // Enable debugging
@@ -31,7 +31,7 @@ function getCasUser($wiki)
     }
 
     // Initialize phpCAS
-    phpCAS::client(CAS_VERSION_2_0, $wiki->config['cas_host'], $wiki->config['cas_port'], $wiki->config['cas_context'], false);    
+    phpCAS::client(CAS_VERSION_2_0, $wiki->config['cas_host'], $wiki->config['cas_port'], $wiki->config['cas_context'], false);
     
     if (!empty($wiki->config['cas_server_ca_cert_path'])) {
         // For production use set the CA certificate that is the issuer of the cert
@@ -45,7 +45,7 @@ function getCasUser($wiki)
     }
     
     // set the language to french
-    phpCAS::setLang(PHPCAS_LANG_FRENCH);    
+    phpCAS::setLang(PHPCAS_LANG_FRENCH);
     phpCAS::forceAuthentication();
     if (phpCAS::isAuthenticated()) {
         return phpCAS::getAttributes();
@@ -76,16 +76,15 @@ function checkConfigCasToBazar($bazar, $firsttime = true)
  * Check if user created an entry
  *
  * @param object $wiki YesWiki main object with config parameters
- * @param string $user Username 
- * 
+ * @param string $user Username
+ *
  * @return string page tag for entry
  */
 function bazarEntryExists($wiki, $user)
 {
     include_once 'tools/bazar/libs/bazar.fonct.php';
     $res = baz_requete_recherche_fiches('', '', $wiki->config['cas_bazar_mapping'][0]['id'], '', 1, $user);
-    return isset($res[0]['tag']) ? $res[0]['tag'] : false;
-
+    return empty($res) ? false : array_keys($res)[0];
 }
 
 /**
@@ -94,7 +93,7 @@ function bazarEntryExists($wiki, $user)
  * @param array   $config    yeswiki config for bazar (cas_bazar_mapping)
  * @param array   $user      authentified CAS user attributes
  * @param boolean $anonymous does the user want to be anonymous ?
- * 
+ *
  * @return array bazar entry formatted values
  */
 function createBazarEntry($config, $user, $anonymous = false)
@@ -107,6 +106,7 @@ function createBazarEntry($config, $user, $anonymous = false)
         $fiche['bf_prenom'] = substr(trim($user['field_first_name']), 0, 1);
         $fiche['bf_mail'] = $user['mail'];
         $fiche['bf_titre'] = 'Utilisateur anonyme';
+        $fiche['id_fiche'] = genere_nom_wiki($fiche['bf_titre']);
     } else {
         foreach ($config[0]['fields'] as $key => $val) {
             $val = explode('.', $val);
@@ -119,12 +119,16 @@ function createBazarEntry($config, $user, $anonymous = false)
                 $fiche[$key] = isset($jsonval[$val[1]]) ? (string)$jsonval[$val[1]] : '';
             } else {
                 $fiche[$key] = isset($user[$val[0]]) ? (string)$user[$val[0]] : '';
-            }  
+            }
         }
         // if no information about title, we take "first name last name"
         if (!isset($fiche['bf_titre'])) {
+            if (empty(trim($fiche['bf_prenom'])) && empty(trim($fiche['bf_nom']))) {
+                $fiche['bf_prenom'] = $user['name'];
+            }
             $fiche['bf_titre'] = $fiche['bf_prenom'].' '.$fiche['bf_nom'];
         }
+        $fiche['id_fiche'] = genere_nom_wiki(trim($fiche['bf_titre']));
     }
     return $fiche;
 }
