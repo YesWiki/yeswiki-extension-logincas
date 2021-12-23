@@ -28,10 +28,7 @@ if ($this->GetUser() && isset($_GET['attr']) && $auth) {
             if (!empty($fiche)) {
                 $fiche['antispam'] = 1;
                 $GLOBALS['wiki']->services->get(EntryManager::class)->create($fiche['id_typeannonce'], $fiche);
-                var_dump($fiche, $auth);
-                exit;
-                //$fiche = baz_insertion_fiche($fiche);
-                $this->setMessage('Merci, '.$fiche['bf_titre'].' et bonne navigation sur le mooc Transition Intérieure !');
+                $this->setMessage('Merci, '.$fiche['bf_titre'].' et bonne navigation sur le wiki !');
                 $this->redirect($this->href('', $this->config['root_page']));
             }
         } else {
