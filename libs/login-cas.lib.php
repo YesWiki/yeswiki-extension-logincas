@@ -136,3 +136,54 @@ function updateBazarEntry($fields, $wikiuser, $casuser)
 {
     return;
 }
+
+/** Le formulaire de connexion natif de YesWiki, rendu tel quel. */
+function logincasRenderCoreLogin($wiki)
+{
+    $coreAction = 'tools/login/actions/LoginAction.php';
+    if (!file_exists($coreAction)) {
+        return '';
+    }
+
+    $savedParameters = $wiki->parameter ?? [];
+    $vars = is_array($wiki->parameter ?? null) ? $wiki->parameter : [];
+    $output = '';
+    try {
+        $performable = $wiki->services->get(\YesWiki\Core\Service\Performer::class)->createPerformable([
+            'filePath' => $coreAction,
+            'baseName' => 'LoginAction',
+            'isDefinedAsClass' => true,
+        ], $vars, $output);
+        $html = $performable->run();
+    } catch (Throwable $exception) {
+        $html = '';
+    }
+    $wiki->parameter = $savedParameters;
+
+    return $html;
+}
+
+/** L'URL de la documentation embarquée de l'extension, dans la langue de l'usager. */
+function logincasDocUrl($wiki)
+{
+    $lang = ($GLOBALS['prefered_language'] ?? 'fr') === 'en' ? 'en' : 'fr';
+
+    return $wiki->config['base_url'] . 'doc/#tools/logincas/' . $lang . '/README.md';
+}
+
+/** Encode les attributs CAS pour un aller-retour dans l'url, en JSON plutôt qu'en PHP sérialisé. */
+function logincasEncodeAttributes($attributes)
+{
+    return rawurlencode(json_encode($attributes, JSON_UNESCAPED_UNICODE));
+}
+
+/** Relit des attributs CAS venus de l'url, ou null si ce n'est pas un tableau JSON. */
+function logincasDecodeAttributes($encoded)
+{
+    if (!is_string($encoded) || $encoded === '') {
+        return null;
+    }
+    $decoded = json_decode(rawurldecode($encoded), true);
+
+    return is_array($decoded) ? $decoded : null;
+}

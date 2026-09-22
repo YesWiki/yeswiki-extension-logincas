@@ -1,46 +1,42 @@
 <?php
-/**
- * Handler for creating bazar entry based on CAS server informations
- *
- * @category YesWiki
- * @package  Logincas
- * @author   Florian Schmitt <mrflos@lilo.org>
- * @license  https://www.gnu.org/licenses/agpl-3.0.en.html AGPL 3.0
- * @link     https://yeswiki.net
- */
+// Handler /createentry : crée la fiche bazar d'une personne authentifiée par CAS,
+// après lui avoir demandé son consentement.
 
 use YesWiki\Bazar\Service\EntryManager;
 
-// Vérification de sécurité
 if (!defined("WIKINI_VERSION")) {
     die("acc&egrave;s direct interdit");
 }
 
 require_once 'tools/logincas/libs/login-cas.lib.php';
 ob_start();
-$auth = unserialize(rawurldecode($_GET['attr']));
+
+$request = $this->request;
+$auth = logincasDecodeAttributes($request->query->get('attr'));
 $bazar = $this->config['cas_bazar_mapping'];
-if ($this->GetUser() && isset($_GET['attr']) && $auth) {
-    if (!bazarEntryExists($this, $auth['name']) && checkConfigCasToBazar($bazar, isset($_GET['firsttime']))) {
-        if (isset($_GET['choice'])) {
-            $anonymous = $_GET['choice']=='yes' ? false : true;
+
+if ($this->GetUser() && $auth) {
+    if (!bazarEntryExists($this, $auth['name']) && checkConfigCasToBazar($bazar, $request->query->has('firsttime'))) {
+        if ($request->query->has('choice')) {
+            $anonymous = $request->query->get('choice') !== 'yes';
             $fiche = createBazarEntry($bazar, $auth, $anonymous);
             if (!empty($fiche)) {
                 $fiche['antispam'] = 1;
-                $GLOBALS['wiki']->services->get(EntryManager::class)->create($fiche['id_typeannonce'], $fiche);
+                $this->services->get(EntryManager::class)->create($fiche['id_typeannonce'], $fiche);
                 $this->setMessage('Merci, '.$fiche['bf_titre'].' et bonne navigation sur le wiki !');
                 $this->redirect($this->href('', $this->config['root_page']));
             }
         } else {
+            $encoded = logincasEncodeAttributes($auth);
             echo '<h1>Création de votre fiche</h1>';
             echo '<div class="consent">'.$bazar[0]['consent_question'];
-            echo '<a href="'.$this->href('createentry', '', 'firsttime=1&choice=yes&attr='.rawurlencode(serialize($auth)), false).'" class="btn btn-success">OK, j\'accepte !</a> ou 
-            <a href="'.$this->href('createentry', '', 'firsttime=1&choice=no&attr='.rawurlencode(serialize($auth)), false).'" >Non merci</a>';
+            echo '<a href="'.$this->href('createentry', '', 'firsttime=1&choice=yes&attr='.$encoded, false).'" class="btn btn-success">OK, j\'accepte !</a> ou
+            <a href="'.$this->href('createentry', '', 'firsttime=1&choice=no&attr='.$encoded, false).'" >Non merci</a>';
             echo '</div><br><br>';
         }
     }
 } else {
-    echo '<div class="alert alert-danger">Erreur : nous n\'etes pas connecté.</div>';
+    echo '<div class="alert alert-danger">Erreur : vous n\'êtes pas connecté.</div>';
 }
 
 $content = ob_get_clean();
